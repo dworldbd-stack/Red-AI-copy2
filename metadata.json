@@ -1,0 +1,7 @@
+{
+  "name": "Copy of Red AI",
+  "description": "Red AI is a free, intelligent assistant with specialized modes for general chat, coding, and cybersecurity. Engage in live, voice-based or text conversations and get expert answers.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
