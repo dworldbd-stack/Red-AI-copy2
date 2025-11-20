@@ -1,0 +1,8 @@
+messages:
+  - role: system
+    content: You are a helpful assistant that breaks down action items from a meeting
+  - role: user
+    content: >
+      make this github app project pulish as githubpages and fix deploy app with
+      yaml file and host like an cloud app
+model: deepseek/deepseek-v3-0324
