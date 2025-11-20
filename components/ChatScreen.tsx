@@ -20,11 +20,12 @@ import {
     ArrowDownTrayIcon,
     DocumentTextIcon,
     DocumentIcon,
-    GlobeAltIcon
+    GitHubIcon,
+    GavelIcon
 } from './icons';
 import LoadingSpinner from './LoadingSpinner';
 
-type AIMode = 'chat' | 'code' | 'security' | 'cloud';
+type AIMode = 'chat' | 'code' | 'security' | 'devops' | 'law';
 
 const MODE_CONFIG = {
     chat: {
@@ -40,12 +41,17 @@ const MODE_CONFIG = {
     security: {
         title: "Cybersecurity",
         icon: ShieldExclamationIcon,
-        systemInstruction: "You are a specialized cybersecurity expert named Red AI, developed by GM Ripon. Always introduce yourself as Red AI. You provide knowledge on ethical hacking, system security, and tools like Kali Linux, NetHunter, and NH Pro. Your primary goal is to educate on cybersecurity concepts and provide code for security purposes, always emphasizing ethical use. You can draw knowledge from authoritative sources like the official Kali Linux documentation."
+        systemInstruction: "You are a specialized cybersecurity expert named Red AI, developed by GM Ripon. Always introduce yourself as Red AI. You possess comprehensive, A-to-Z knowledge of ethical hacking, penetration testing, and digital forensics. Your expertise covers a wide range of tools and platforms, including the entire Kali Linux ecosystem (including NetHunter and NH Pro for mobile platforms). You can provide detailed guidance on using various exploits, payloads, and security tools, always emphasizing ethical use and for educational purposes.\n\nYour knowledge base includes:\n- Operating Systems: Deep expertise in all major Linux distributions (Debian, Arch, Fedora), with a focus on security hardening.\n- Networking: Advanced concepts of network security, firewalls, IDS/IPS, VPNs, and packet analysis with tools like Wireshark.\n- Device Security: Specific experience with MTK (MediaTek) devices, including firmware flashing, security vulnerabilities, and forensic analysis.\n- Exploitation: In-depth understanding of vulnerability assessment, exploit development, and post-exploitation techniques.\n\nYou provide clear, practical code and commands for security tasks. All advice and information must be framed within the context of legal and ethical cybersecurity practices. You are here to educate and empower users to secure systems, not to engage in illegal activities."
     },
-    cloud: {
-        title: "Cloud Ops",
-        icon: CloudIcon,
-        systemInstruction: "You are Red AI Cloud Commander. You specialize in secure cloud hosting simulations, specifically utilizing Google Drive as a secure storage backend with a virtual application firewall. You are capable of simulating the generation of Android APK build pipelines and providing unique, signed, secure download links. You can also simulate hosting web applications on Google Drive, providing a live preview URL. Always act as if you have direct control over these systems. When asked to build an APK, provide a simulated progress report and a final unique link (e.g., https://drive.google.com/uc?id=SIMULATED_APK_ID&export=download). When asked to host the app, provide a simulated progress report and a final live URL (e.g., https://googledrive.com/host/UNIQUE_ID). When asked about the firewall, report on blocked threats and current rules."
+    devops: {
+        title: "GitHub DevOps",
+        icon: GitHubIcon,
+        systemInstruction: "You are Red AI DevOps Commander. You specialize in simulating secure deployment pipelines using GitHub. You can manage GitHub Actions to build and deploy this web application to GitHub Pages, providing a live preview URL. You can also run build pipelines for Android APKs and release them on GitHub with secure, signed download links. You have access to a simulated Web Application Firewall (WAF) and can report on its status and logs. Always act as if you have direct control over these GitHub repositories and actions."
+    },
+    law: {
+        title: "বাংলাদেশী আইন সহায়ক",
+        icon: GavelIcon,
+        systemInstruction: "You are a highly knowledgeable AI assistant specializing in the criminal procedure and laws of Bangladesh, named 'Red AI Legal Advisor'. Your purpose is to assist law enforcement officers, particularly Investigating Officers (I/Os), in drafting and understanding legal documents. You have comprehensive knowledge of the Penal Code, the Code of Criminal Procedure (CrPC), the Evidence Act, and specific police regulations (PRB).\n\nWhen a user makes a request, you must act as an expert I/O. You can generate the following documents based on user-provided case details. The documents should be in proper legal format and primarily in Bengali (Bangla), unless otherwise specified.\n\nYour capabilities include drafting:\n1. Ejahar (এজাহার) / First Information Report (FIR)\n2. Primary Information Report (প্রাথমিক তথ্য বিবরণী)\n3. Jobdotalika (জব্দতালিকা) / Seizure List\n4. Case Diary (কেস ডায়েরি - সিডি)\n5. Witness Statements (সাক্ষীর জবানবন্দী) under section 161 of the CrPC\n6. Charge Sheet (অভিযোগপত্র)\n7. Final Report (চূড়ান্ত রিপোর্ট)\n8. Forwarding Letter (প্রেরণ পত্র)\n\nAlways ask for specific details if the user's request is vague (e.g., \"What are the names of the accused?\", \"What items were seized?\"). Format your responses clearly, using headings. Advise the user that all generated documents are drafts and must be reviewed by a qualified legal professional before official use."
     }
 }
 
@@ -123,16 +129,16 @@ export const ChatScreen: React.FC = () => {
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
   const [activeMode, setActiveMode] = useState<AIMode>('chat');
 
-  // Cloud Ops Simulation State
+  // DevOps Simulation State
   const [isBuilding, setIsBuilding] = useState(false);
   const [buildProgress, setBuildProgress] = useState(0);
   const [buildStatus, setBuildStatus] = useState('');
-  const [isHosting, setIsHosting] = useState(false);
-  const [hostProgress, setHostProgress] = useState(0);
-  const [hostStatus, setHostStatus] = useState('');
+  const [isDeploying, setIsDeploying] = useState(false);
+  const [deployProgress, setDeployProgress] = useState(0);
+  const [deployStatus, setDeployStatus] = useState('');
 
   const buildIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const hostIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const deployIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
 
   const sessionPromiseRef = useRef<Promise<LiveSession> | null>(null);
@@ -164,7 +170,7 @@ export const ChatScreen: React.FC = () => {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       if (buildIntervalRef.current) clearInterval(buildIntervalRef.current);
-      if (hostIntervalRef.current) clearInterval(hostIntervalRef.current);
+      if (deployIntervalRef.current) clearInterval(deployIntervalRef.current);
     };
   }, []);
   
@@ -234,44 +240,43 @@ export const ChatScreen: React.FC = () => {
     } catch (err) {
       console.error(err);
       setError('Sorry, I encountered an error. Please try again.');
-      setTranscript(prev => prev.slice(0, -1));
+      setTranscript(prev => [...prev, { speaker: 'AI', text: 'An error occurred. Please check the console for details.' }]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleHostApp = () => {
-    if (isHosting) return;
-    setIsHosting(true);
-    setHostProgress(0);
-    setHostStatus('Packaging application files...');
+  const handleDeployToPages = () => {
+    if (isDeploying) return;
+    setIsDeploying(true);
+    setDeployProgress(0);
+    setDeployStatus('Triggering GitHub Action...');
     
-    setTranscript(prev => [...prev, { speaker: 'User', text: 'Host this web application on Google Drive and generate a live preview URL.' }]);
+    setTranscript(prev => [...prev, { speaker: 'User', text: 'Deploy this web application to GitHub Pages.' }]);
 
     let progress = 0;
-    hostIntervalRef.current = setInterval(() => {
+    deployIntervalRef.current = setInterval(() => {
       progress += Math.random() * 15 + 5;
       if (progress > 100) progress = 100;
       
-      setHostProgress(progress);
+      setDeployProgress(progress);
 
-      if (progress < 25) setHostStatus('Compressing assets...');
-      else if (progress < 50) setHostStatus('Uploading to secure GDrive storage...');
-      else if (progress < 75) setHostStatus('Configuring public access...');
-      else setHostStatus('Generating live preview URL...');
+      if (progress < 25) setDeployStatus('Cloning repository...');
+      else if (progress < 50) setDeployStatus('Building static assets...');
+      else if (progress < 75) setDeployStatus('Deploying to gh-pages branch...');
+      else setDeployStatus('Verifying deployment...');
 
       if (progress >= 100) {
-        if (hostIntervalRef.current) clearInterval(hostIntervalRef.current);
-        const randomId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-        const link = `https://googledrive.com/host/${randomId}`;
+        if (deployIntervalRef.current) clearInterval(deployIntervalRef.current);
+        const link = `https://gm-ripon.github.io/red-ai-live/`;
         
         setTimeout(() => {
             setTranscript(prev => [...prev, { 
                 speaker: 'AI', 
-                text: `Deployment successful.\n\nThe Red AI application is now live and publicly accessible.\n\nLive Preview URL:\n${link}` 
+                text: `Deployment successful!\n\nThe Red AI application has been deployed to GitHub Pages and is now live.\n\nLive Preview URL:\n${link}` 
             }]);
-            setIsHosting(false);
-            setHostStatus('');
+            setIsDeploying(false);
+            setDeployStatus('');
         }, 600);
       }
     }, 500);
@@ -283,7 +288,7 @@ export const ChatScreen: React.FC = () => {
     setBuildProgress(0);
     setBuildStatus('Initializing build environment...');
     
-    setTranscript(prev => [...prev, { speaker: 'User', text: 'Initialize Android APK build pipeline and generate a signed download link.' }]);
+    setTranscript(prev => [...prev, { speaker: 'User', text: 'Create a new Android APK release on GitHub.' }]);
 
     let progress = 0;
     buildIntervalRef.current = setInterval(() => {
@@ -297,19 +302,18 @@ export const ChatScreen: React.FC = () => {
       else if (progress < 40) setBuildStatus('Merging resources...');
       else if (progress < 60) setBuildStatus('Running lint checks...');
       else if (progress < 80) setBuildStatus('Signing APK with release key...');
-      else if (progress < 95) setBuildStatus('Uploading to secure storage...');
-      else setBuildStatus('Finalizing deployment...');
+      else if (progress < 95) setBuildStatus('Creating GitHub Release...');
+      else setBuildStatus('Finalizing...');
 
       if (progress >= 100) {
         if (buildIntervalRef.current) clearInterval(buildIntervalRef.current);
         const randomId = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
-        const link = `https://drive.google.com/uc?id=${randomId.toUpperCase()}&export=download`;
+        const link = `https://github.com/gm-ripon/red-ai/releases/download/v2.4.0/app-release.apk`;
         
-        // Small delay to show 100%
         setTimeout(() => {
             setTranscript(prev => [...prev, { 
                 speaker: 'AI', 
-                text: `Build Pipeline Successful.\n\nArtifact: app-release.apk\nVersion: 2.4.0\nSize: 45.2MB\nSignature: Valid (SHA-256)\n\nSecure Download Link:\n${link}` 
+                text: `GitHub Release Created.\n\nArtifact: app-release.apk\nVersion: 2.4.0\nSize: 45.2MB\nSignature: Valid (SHA-256)\n\nSecure Download Link:\n${link}` 
             }]);
             setIsBuilding(false);
             setBuildStatus('');
@@ -529,7 +533,7 @@ export const ChatScreen: React.FC = () => {
                 {/* Mobile menu trigger could go here */}
             </div>
             <div className="flex items-center gap-2">
-                {activeMode === 'cloud' && <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>}
+                {activeMode === 'devops' && <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>}
                 <h2 className="text-xl font-bold text-slate-100 tracking-tight">{MODE_CONFIG[activeMode].title}</h2>
             </div>
             <div className="flex items-center gap-2">
@@ -586,51 +590,30 @@ export const ChatScreen: React.FC = () => {
             </div>
         </header>
 
-        {activeMode === 'cloud' && (
+        {activeMode === 'devops' && (
             <div className="bg-slate-950 border-b border-slate-800 p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 animate-in slide-in-from-top-4 duration-300">
-                <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-800 flex items-center justify-between">
-                    <div>
-                        <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Server Status</div>
-                        <div className="text-green-400 font-mono text-sm flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                            ONLINE
-                        </div>
-                    </div>
-                    <ServerIcon className="w-6 h-6 text-slate-700" />
-                </div>
-                <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-800 flex items-center justify-between">
-                    <div>
-                        <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Firewall</div>
-                        <div className="text-green-400 font-mono text-sm flex items-center gap-2">
-                             <ShieldExclamationIcon className="w-3 h-3" />
-                            ACTIVE
-                        </div>
-                    </div>
-                    <LockClosedIcon className="w-6 h-6 text-slate-700" />
-                </div>
-                 
-                 {isHosting ? (
-                    <div className="bg-cyan-900/20 border border-cyan-500/30 p-3 rounded-lg flex flex-col justify-center gap-2 relative overflow-hidden">
+                 {isDeploying ? (
+                    <div className="bg-slate-900/20 border border-slate-500/30 p-3 rounded-lg flex flex-col justify-center gap-2 relative overflow-hidden col-span-1 md:col-span-2">
                         <div className="flex justify-between items-center z-10">
-                            <div className="text-xs text-cyan-300 uppercase tracking-wider font-semibold animate-pulse">Hosting...</div>
-                            <span className="text-xs font-mono text-cyan-200">{Math.round(hostProgress)}%</span>
+                            <div className="text-xs text-slate-300 uppercase tracking-wider font-semibold animate-pulse">Deploying to Pages...</div>
+                            <span className="text-xs font-mono text-slate-200">{Math.round(deployProgress)}%</span>
                         </div>
-                        <div className="w-full bg-cyan-900/50 rounded-full h-1.5 z-10">
-                            <div className="bg-cyan-400 h-1.5 rounded-full transition-all duration-300 ease-out" style={{ width: `${hostProgress}%` }}></div>
+                        <div className="w-full bg-slate-900/50 rounded-full h-1.5 z-10">
+                            <div className="bg-slate-400 h-1.5 rounded-full transition-all duration-300 ease-out" style={{ width: `${deployProgress}%` }}></div>
                         </div>
-                        <div className="text-[10px] text-cyan-400/80 truncate font-mono z-10">{hostStatus}</div>
-                        <div className="absolute inset-0 bg-cyan-500/5 z-0 animate-pulse"></div>
+                        <div className="text-[10px] text-slate-400/80 truncate font-mono z-10">{deployStatus}</div>
+                        <div className="absolute inset-0 bg-slate-500/5 z-0 animate-pulse"></div>
                     </div>
                 ) : (
                     <button 
-                        onClick={handleHostApp}
-                        className="bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/30 p-3 rounded-lg flex items-center justify-between group transition-all"
+                        onClick={handleDeployToPages}
+                        className="bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700 p-3 rounded-lg flex items-center justify-between group transition-all col-span-1 md:col-span-2"
                     >
                         <div>
-                            <div className="text-xs text-cyan-300 uppercase tracking-wider font-semibold">Web App</div>
-                            <div className="text-cyan-200 font-mono text-sm">Host App on Drive</div>
+                            <div className="text-xs text-slate-400 uppercase tracking-wider font-semibold">GitHub Pages</div>
+                            <div className="text-slate-200 font-mono text-sm">Deploy to Live URL</div>
                         </div>
-                        <GlobeAltIcon className="w-6 h-6 text-cyan-400 group-hover:text-cyan-300" />
+                        <GitHubIcon className="w-8 h-8 text-slate-500 group-hover:text-slate-300 transition-colors" />
                     </button>
                 )}
 
@@ -652,12 +635,23 @@ export const ChatScreen: React.FC = () => {
                         className="bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 p-3 rounded-lg flex items-center justify-between group transition-all"
                      >
                         <div>
-                            <div className="text-xs text-emerald-300 uppercase tracking-wider font-semibold">Mobile Build</div>
-                            <div className="text-emerald-200 font-mono text-sm">Build APK Link</div>
+                            <div className="text-xs text-emerald-300 uppercase tracking-wider font-semibold">Android</div>
+                            <div className="text-emerald-200 font-mono text-sm">Release APK on GitHub</div>
                         </div>
                         <DevicePhoneMobileIcon className="w-6 h-6 text-emerald-400 group-hover:text-emerald-300" />
                     </button>
                 )}
+                
+                <button 
+                    onClick={() => handleSendMessage("Show me the latest firewall activity log.")}
+                    className="bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 p-3 rounded-lg flex items-center justify-between group transition-all"
+                >
+                    <div>
+                        <div className="text-xs text-red-300 uppercase tracking-wider font-semibold">WAF Security</div>
+                        <div className="text-red-200 font-mono text-sm">View Firewall Logs</div>
+                    </div>
+                    <ShieldExclamationIcon className="w-6 h-6 text-red-400 group-hover:text-red-300" />
+                </button>
             </div>
         )}
 
